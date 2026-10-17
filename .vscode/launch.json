@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "POPS Manager",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pops_manager",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        }
+    ]
+}
