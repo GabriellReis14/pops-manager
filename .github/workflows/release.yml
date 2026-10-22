@@ -42,7 +42,7 @@ jobs:
         run: .\scripts\build_windows.ps1 -Zip
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: POPS-Manager-win64
           path: dist/POPS-Manager-*-win64.zip
