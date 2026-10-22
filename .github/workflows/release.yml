@@ -1,0 +1,61 @@
+name: Release
+
+# Push a tag such as v0.2.0 (it must match the version in pyproject.toml) to build the public Windows
+# version and publish dist/POPS-Manager-<version>-win64.zip on the Releases page.
+# The public build contains no POPStarter, Sony or game files.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check tag and version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ("v$version" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} does not match pyproject version $version" }
+
+      - name: Create .venv
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python.exe -m pip install --upgrade pip
+          .venv\Scripts\python.exe -m pip install -e ".[dev]"
+
+      - name: Build (tests + PyInstaller + smoke test + zip)
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: .\scripts\build_windows.ps1 -Zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: POPS-Manager-win64
+          path: dist/POPS-Manager-*-win64.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/POPS-Manager-*-win64.zip
+          generate_release_notes: true
+          body: |
+            **Download:** the `POPS-Manager-…-win64.zip` file below → extract → run `POPS-Manager.exe` (Windows 10/11 x64).
+
+            This build does **not** include POPStarter, `POPS_IOX.PAK` or any game: put your own files in the
+            `resources` folder next to the exe or choose them in *Settings → POPStarter files*.
+            See the README ([English](README.md) / [Português](README.pt-BR.md)).
