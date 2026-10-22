@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from PySide6.QtCore import QElapsedTimer, QLibraryInfo, QObject, QSettings, QThread, QTranslator, QUrl, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QDesktopServices
+from PySide6.QtGui import QBrush, QColor, QDesktopServices, QIcon
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QFileDialog, QLabel, QLineEdit, QTableWidget, QTableWidgetItem, QCheckBox, QDialog,
     QDialogButtonBox, QMessageBox, QComboBox, QHeaderView, QProgressBar, QTreeWidget, QTreeWidgetItem,
@@ -818,11 +818,17 @@ def smoke_test(window: Window, expect_bundled: bool = False, expect_fixes: bool 
         import py7zr  # noqa: F401  (imported lazily by convert; make sure the build includes it)
     except ImportError:
         return 3
+    if QIcon(str(ICON)).isNull():
+        return 5
     return 0
+
+
+ICON = Path(__file__).resolve().parent / 'assets' / 'icon.png'   # drawn by scripts/make_icon.py
 
 
 def main():
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(str(ICON)))
     if '--smoke-test' in sys.argv:
         # isolated settings so a user's configuration cannot hide build problems
         settings = QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, 'POPS Manager', 'smoke-test')

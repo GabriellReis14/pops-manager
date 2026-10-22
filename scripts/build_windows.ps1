@@ -58,6 +58,8 @@ try {
 
     & $Python -m PyInstaller --noconfirm --clean --onedir --windowed `
         --name POPS-Manager --paths "$Root\src" @Bundle `
+        --icon "$Root\src\pops_manager\assets\icon.ico" `
+        --add-data "$Root\src\pops_manager\assets;pops_manager\assets" `
         --distpath "$Root\dist" --workpath "$Root\build\pyinstaller" --specpath "$Root\build" `
         "$Root\src\pops_manager\__main__.py"
     if ($LASTEXITCODE) { throw 'PyInstaller failed.' }

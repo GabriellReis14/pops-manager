@@ -305,3 +305,14 @@ def test_fast_device_has_no_note(window):
     window.show_speed()
     assert window.overall.format() == PT['working_speed'].format(done=0, total=2, speed='30.0 MB', eta=PT['eta_min'].format(m=2))
     assert window.speed_note.isHidden()
+
+
+def test_icon_files():
+    import struct
+    assets = Path(gui.__file__).parent / 'assets'
+    ico = (assets / 'icon.ico').read_bytes()
+    reserved, kind, count = struct.unpack_from('<HHH', ico)
+    assert (reserved, kind) == (0, 1) and count >= 5
+    sizes = {ico[6 + 16 * i] or 256 for i in range(count)}
+    assert {16, 32, 48, 256} <= sizes
+    assert not gui.QIcon(str(gui.ICON)).isNull()

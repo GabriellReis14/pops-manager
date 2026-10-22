@@ -1,0 +1,43 @@
+name: Bug report / Relatar problema
+description: A game does not start, a file is wrong or the app fails / Um jogo não abre, um arquivo está errado ou o programa falha
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach games, BIOS, POPS_IOX.PAK or POPSTARTER.ELF.** / **Nunca anexe jogos, BIOS, POPS_IOX.PAK ou POPSTARTER.ELF.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / O que aconteceu?
+      description: Steps, what you expected and what you saw (e.g. "screen flashes and returns to OPL").
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: POPS Manager version / Versão
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: textarea
+    id: device
+    attributes:
+      label: Device report / Relatório do dispositivo
+      description: Paste the result of *Tools → Check device* (file system, partition, model, fragmented VCDs).
+      render: text
+  - type: input
+    id: ps2
+    attributes:
+      label: PS2 setup / Configuração do PS2
+      placeholder: "PS2 Slim SCPH-90001, OPL 1.2.0 beta 2049, POPStarter r13, BDMAssault on mc0: yes/no"
+  - type: input
+    id: game
+    attributes:
+      label: Game file name / Nome do arquivo do jogo
+      placeholder: "Crash Team Racing (USA).cue"
+  - type: textarea
+    id: tree
+    attributes:
+      label: Folder tree on the device (optional) / Árvore de pastas no dispositivo (opcional)
+      render: text
