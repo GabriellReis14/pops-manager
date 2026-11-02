@@ -19,7 +19,8 @@ _HEADINGS = {
 }
 # (name, author, what POPS Manager took from it)
 CREDITS = [
-    ('POPStarter', 'krHACKen (kHn)', 'PS1 launcher for the PS2; documentation by Shaolin Assassin'),
+    ('POPStarter', 'krHACKen (kHn)', 'PS1 launcher for the PS2; documentation by Shaolin Assassin. '
+     'POPSTARTER.ELF r13 Beta (2019/06/05) is included unmodified in the releases (freeware)'),
     ('CUE2POPS', 'krHACKen', 'VCD format (header layout, CDRWIN pregap fix) reimplemented from its description'),
     ('PS1 USB / SMB Mass Converter Tool v1.0', 'Eliminator14',
      'APPS/POPS layout, identifier rules and title.cfg format (observed output reproduced)'),

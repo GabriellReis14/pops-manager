@@ -15,8 +15,8 @@ from pops_manager import convert, credits, diagnostics, fixes
 from pops_manager.core import (Cancelled, Game, InstallResult, MAX_ID_LENGTH, SHORT_ID_LENGTH, Options, Progress,
     POPS_DIR, PAK_NAME, make_games, preview_items, install, plan_vmcs, create_vmcs, validate)
 from pops_manager.i18n import LANGUAGES, QT_LOCALES, T
-from pops_manager.resources import (ELF_REL, POPS_REL, SUPPORT_REL, UTILS_REL, Located, fix_folders, locate,
-    pops_files, support_files)
+from pops_manager.resources import (ELF_REL, POPS_REL, SUPPORT_REL, UTILS_REL, Located, child, fix_folders,
+    included_elf, local_dir, locate, pops_files, pops_folder_from, support_files)
 
 STYLE_DONE = 'QProgressBar { color: #1b5e20; text-align: center; } QProgressBar::chunk { background: #a5d6a7; }'
 STYLE_ERROR = 'QProgressBar { color: #c62828; text-align: center; }'
@@ -69,15 +69,34 @@ class Resources:
         return key == 'elf' or self.flag(f'copy_{key}', self.FLAGS.get(f'copy_{key}', True))
 
     def default(self, key: str) -> Located:
+        """Without a setting of its own, an item is looked up inside the chosen POPS folder first:
+        choosing that one folder is enough to find POPSTARTER.ELF, POPSUtils and a POPSTARTER folder next to it."""
+        pops = self.custom('pops')
+        if pops is not None and key != 'pops':
+            near = {'elf': lambda: child(pops, 'POPSTARTER.ELF'),
+                    'fixes': lambda: child(pops, 'POPSUtils', folder_wanted=True),
+                    'support': lambda: child(pops.parent, 'POPSTARTER', folder_wanted=True)}[key]()
+            if near is not None:
+                return Located(near, 'custom')
         rel, folder = self.ITEMS[key]
-        return locate(rel, folder=folder)
+        found = locate(rel, folder=folder)
+        if found.path is None and key == 'elf' and included_elf():
+            return Located(included_elf(), 'included')          # POPStarter shipped with the program
+        return found
 
     def get(self, key: str) -> Located:
-        rel, folder = self.ITEMS[key]
-        return locate(rel, self.custom(key), folder=folder)
+        custom = self.custom(key)
+        return Located(custom, 'custom') if custom is not None else self.default(key)
+
+    def expected(self, key: str) -> Path:
+        """Where the default is searched, to tell the user (resources folder next to the exe)."""
+        return local_dir() / self.ITEMS[key][0]
 
     def elf(self) -> Path | None:
         return self.get('elf').path
+
+    def has_pak(self) -> bool:
+        return any(rel.name.upper() == PAK_NAME for _, rel in self.shared())
 
     def shared(self) -> list[tuple[Path, Path]]:
         files = []
@@ -114,7 +133,10 @@ class ResourcesDialog(QDialog):
         self.edits: dict[str, QLineEdit] = {}
         for row, key in enumerate(Resources.ITEMS):
             edit = QLineEdit(str(res.custom(key) or ''))
-            edit.setPlaceholderText(tr('default_hint').format(path=res.default(key).path or tr('origin_missing')))
+            found = res.default(key).path
+            edit.setPlaceholderText(tr('default_hint').format(path=found) if found
+                                    else tr('default_missing').format(path=res.expected(key)))
+            edit.setToolTip(edit.placeholderText())          # long paths do not fit in the field
             browse = QPushButton('...'); browse.clicked.connect(lambda _=False, k=key: self.browse(k))
             reset = QPushButton(tr('default')); reset.clicked.connect(edit.clear)
             grid.addWidget(QLabel(tr(key)), row, 0); grid.addWidget(edit, row, 1)
@@ -360,6 +382,13 @@ class Window(QMainWindow):
         browse = QPushButton('...'); browse.clicked.connect(self.pick_root)
         grid.addWidget(self.root_label, 0, 0); grid.addWidget(self.root_edit, 0, 1); grid.addWidget(browse, 0, 2)
         self.resources_label = QLabel()
+        self.setup_banner = QWidget(); banner = QHBoxLayout(self.setup_banner)
+        self.setup_banner.setStyleSheet('QWidget { background: #fff3cd; color: #5d4200; border-radius: 4px; }')
+        self.setup_text = QLabel(); self.setup_text.setWordWrap(True)
+        self.choose_pops_button = QPushButton(); self.choose_pops_button.clicked.connect(self.choose_pops_folder)
+        self.choose_pops_button.setStyleSheet('QPushButton { background: #ffffff; color: #000000; padding: 4px 10px; }')
+        banner.addWidget(self.setup_text, 1); banner.addWidget(self.choose_pops_button)
+        layout.insertWidget(1, self.setup_banner)
         self.resources_status = QLabel(); self.resources_status.setWordWrap(True)
         self.configure_button = QPushButton(); self.configure_button.clicked.connect(self.configure_resources)
         grid.addWidget(self.resources_label, 1, 0); grid.addWidget(self.resources_status, 1, 1); grid.addWidget(self.configure_button, 1, 2)
@@ -435,7 +464,29 @@ class Window(QMainWindow):
 
     def refresh_resources(self):
         self.resources_status.setText(self.resource_summary())
+        elf = self.res.elf()
+        no_elf = elf is None or not elf.is_file()
+        no_pak = not self.res.has_pak()
+        self.setup_banner.setVisible(no_elf or no_pak)
+        if no_elf or no_pak:
+            key = 'setup_needed' if no_elf else 'pak_needed'
+            self.setup_text.setText(self.tr_(key).format(path=local_dir() / POPS_REL))
+            self.choose_pops_button.setText(self.tr_('choose_pops'))
         self.refresh_preview()
+
+    def choose_pops_folder(self):
+        """First-run shortcut: pick the folder with POPSTARTER.ELF (or its parent); everything else is found in it."""
+        value = QFileDialog.getExistingDirectory(self, self.tr_('choose_pops'))
+        if not value:
+            return
+        pops = pops_folder_from(Path(value))
+        if pops is None:
+            QMessageBox.warning(self, self.tr_('choose_pops'), self.tr_('pops_no_elf').format(path=value)); return
+        self.settings.setValue('pops', str(pops))
+        for key in ('elf', 'fixes', 'support'):          # found inside the new folder (or the included ELF)
+            self.settings.setValue(key, '')
+        self.settings.sync()
+        self.refresh_resources()
 
     def configure_resources(self):
         limit = self.res.id_limit()
@@ -814,6 +865,12 @@ def smoke_test(window: Window, expect_bundled: bool = False, expect_fixes: bool 
         return 2
     if expect_fixes and (window.res.default('fixes').origin != 'bundled' or not window.res.fix_pack()):
         return 4
+    if '--expect-popstarter' in sys.argv:
+        import hashlib
+        from pops_manager.resources import INCLUDED_ELF_SHA256
+        path = included_elf()
+        if path is None or hashlib.sha256(path.read_bytes()).hexdigest() != INCLUDED_ELF_SHA256:
+            return 6
     try:
         import py7zr  # noqa: F401  (imported lazily by convert; make sure the build includes it)
     except ImportError:

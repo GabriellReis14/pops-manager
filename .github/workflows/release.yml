@@ -39,7 +39,7 @@ jobs:
         shell: pwsh
         env:
           QT_QPA_PLATFORM: offscreen
-        run: .\scripts\build_windows.ps1 -Zip
+        run: .\scripts\build_windows.ps1 -Zip -IncludePopstarter
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -56,6 +56,10 @@ jobs:
           body: |
             **Download:** the `POPS-Manager-…-win64.zip` file below → extract → run `POPS-Manager.exe` (Windows 10/11 x64).
 
-            This build does **not** include POPStarter, `POPS_IOX.PAK` or any game: put your own files in the
-            `resources` folder next to the exe or choose them in *Settings → POPStarter files*.
-            See the README ([English](README.md) / [Português](README.pt-BR.md)).
+            **Included:** the program and `POPSTARTER.ELF` (POPStarter r13 Beta 2019/06/05 by krHACKen, unmodified — credits in `THIRD_PARTY/POPStarter`).
+            **You must provide:** `POPS_IOX.PAK` (Sony's emulator, cannot be distributed) and your games. Optional: `CHEATS.TXT`, `IGR_*.TM2` and the Hugopocked fixes pack (`POPSUtils`).
+            On first start click **Choose my POPS folder...** and pick the folder with your `POPS_IOX.PAK`. Details in `LEIA-ME - READ ME.txt` and the README.
+
+            **Incluído:** o programa e o `POPSTARTER.ELF` (POPStarter r13 Beta 2019/06/05, de krHACKen, sem modificações — créditos em `THIRD_PARTY/POPStarter`).
+            **Você precisa providenciar:** o `POPS_IOX.PAK` (emulador da Sony, não pode ser distribuído) e os seus jogos. Opcionais: `CHEATS.TXT`, `IGR_*.TM2` e o pacote de correções do Hugopocked (`POPSUtils`).
+            Na primeira vez, clique em **Escolher minha pasta POPS...** e selecione a pasta com o seu `POPS_IOX.PAK`. Detalhes no `LEIA-ME - READ ME.txt` e no README ([English](README.md) / [Português](README.pt-BR.md)).

@@ -6,13 +6,15 @@
 
 Open-source Windows tool that prepares PS1 games for **POPStarter + OPL Apps** on a USB flash drive or external HDD, in one step: convert to VCD, copy, create the OPL launcher, memory cards, multi-disc files and game fixes.
 
-It replaces the separate `PS1_USB_Converter.exe`, `VMC and MultiDisc Creator.exe` and a VCD converter (PSXVCD/CUE2POPS), reproducing their output byte by byte (see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). Tested on a PS2 Slim with OPL and POPStarter r13. No games or third-party POPStarter binaries are provided.
+It replaces the separate `PS1_USB_Converter.exe`, `VMC and MultiDisc Creator.exe` and a VCD converter (PSXVCD/CUE2POPS), reproducing their output byte by byte (see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). Tested on a PS2 Slim with OPL and POPStarter r13.
+
+> **You need extra files.** The release includes the program and POPStarter's `POPSTARTER.ELF`, but **not `POPS_IOX.PAK`** (Sony's PS1 emulator, which cannot be distributed) and no games. Without `POPS_IOX.PAK` no game starts. See [What is included and what you must provide](#what-is-included-and-what-you-must-provide).
 
 ## Download
 
 1. Open the [**Releases**](../../releases/latest) page and download `POPS-Manager-<version>-win64.zip`.
 2. Extract it to a short path (e.g. `C:\POPS-Manager`) and run `POPS-Manager.exe` (Windows 10/11 x64).
-3. Provide your own POPStarter files (see [POPStarter files](#popstarter-files)).
+3. **Provide `POPS_IOX.PAK`.** On first start a yellow bar asks for it: click **Choose my POPS folder...** and pick the folder that contains your `POPS_IOX.PAK` (the `POPS` folder you used with the old converter works, or the folder above it). The other POPS files and a `POPSUtils` fixes pack inside it are found automatically, and the choice is remembered. Alternatively, copy that folder to `resources\POPS` next to the exe. The `LEIA-ME - READ ME.txt` file in the zip repeats these steps.
 
 Windows SmartScreen may warn about an unknown publisher because the executable is not code-signed: choose *More info → Run anyway*, or build it yourself from source.
 
@@ -84,17 +86,27 @@ What to do:
 
 The PC side is fast (a 660 MB game converts in a few seconds, and the next games are converted while the current one is written). The device is usually the limit: USB 2.0 flash drives often write 5–20 MB/s, so a 700 MB game can take a minute or more. Writing several games at once would not be faster and would fragment the VCDs.
 
-## POPStarter files
+## What is included and what you must provide
 
-POPS Manager needs `POPSTARTER.ELF` and normally `POPS_IOX.PAK`. **They are not included in this repository or in the releases**: POPStarter is closed-source freeware and `POPS_IOX.PAK` contains Sony's POPS emulator. Use your own copies. Put them in a `resources` folder next to `POPS-Manager.exe`, with the same layout as the drive, or choose them in *Settings → POPStarter files*:
+| File | In the release? | What it is |
+|---|---|---|
+| `POPS-Manager.exe` | ✅ included | this program |
+| `POPSTARTER.ELF` | ✅ included | POPStarter r13 Beta (2019/06/05) by krHACKen — freeware, unmodified, checksum-verified; credits in `THIRD_PARTY/POPStarter` |
+| **`POPS_IOX.PAK`** | ❌ **you must provide it** | Sony's PS1 emulator (POPS). It cannot be redistributed. **No game starts without it.** It is usually in the `POPS` folder you used with PS1_USB_Converter |
+| your PS1 games | ❌ you provide them | `.cue`/`.bin`, `.zip`, `.7z`, raw `.iso`/`.img` or `.VCD` |
+| `CHEATS.TXT`, `IGR_BG.TM2`, `IGR_YES.TM2`, `IGR_NO.TM2` | optional | global cheats and In-Game-Reset screen images, in the same `POPS` folder |
+| `POPSUtils` (*Hugopocked POPStarter Fixes*) | optional, recommended | per-game fixes for crashes and graphics/sound glitches, applied automatically |
+| BDMAssault `usbd.irx` / `usbhdfsd.irx` | optional | only for **exFAT** drives; installed on the PS2 **memory card** (`mc0:/POPSTARTER/`), not on the drive |
+
+How to point the program to your files (once): click **Choose my POPS folder...** in the yellow bar (or *Settings → POPStarter files*) and pick the folder that has `POPS_IOX.PAK`. Or copy it next to the exe with the same layout as the drive:
 
 ```
-resources/POPS/POPSTARTER.ELF, POPS_IOX.PAK, CHEATS.TXT, IGR_*.TM2 …
+resources/POPS/POPS_IOX.PAK, CHEATS.TXT, IGR_*.TM2 …   (+ POPSTARTER.ELF if you prefer your own copy)
 resources/POPS/POPSUtils/          optional: Hugopocked POPStarter Fixes
 resources/POPSTARTER/…             optional; normally belongs on the memory card
 ```
 
-Search order: *Settings* → files embedded in a personal build → `resources` next to the exe → the project root when running from source. Windows programs in the POPS folder (`.exe`, `.dll`) are not copied unless you enable it. Disc image patches (`.xdelta`/`.ppf`) from the fixes pack must be applied to the image by hand (e.g. with DeltaPatcher); the *Fixes...* window points to them.
+Search order: *Settings* / chosen POPS folder → files embedded in a personal build → `resources` next to the exe → the project root when running from source → the `POPSTARTER.ELF` included in the release (your own copy always wins). Windows programs in the POPS folder (`.exe`, `.dll`) are not copied unless you enable it. Disc image patches (`.xdelta`/`.ppf`) from the fixes pack must be applied to the image by hand (e.g. with DeltaPatcher); the *Fixes...* window points to them.
 
 ## Run from source
 
@@ -110,11 +122,12 @@ Python 3.10+ (tested on 3.10 and 3.14). In VS Code, select `.venv` as the interp
 
 ```powershell
 .\scripts\build_windows.ps1                    # tests, PyInstaller onedir build, smoke test of the exe
-.\scripts\build_windows.ps1 -Zip               # also dist\POPS-Manager-<version>-win64.zip (what the Releases contain)
+.\scripts\build_windows.ps1 -Zip                       # also dist\POPS-Manager-<version>-win64.zip
+.\scripts\build_windows.ps1 -Zip -IncludePopstarter    # what the Releases contain (downloads and verifies POPSTARTER.ELF)
 .\scripts\build_windows.ps1 -BundleResources   # PERSONAL build with your POPS files, POPSTARTER\ and fixes embedded
 ```
 
-A personal build writes `PERSONAL_BUILD_DO_NOT_DISTRIBUTE.txt`: **never publish or share it** (`-Zip` is refused for it). Releases are built by GitHub Actions from a version tag, without any third-party file. The icon is original artwork drawn by `scripts/make_icon.py`.
+A personal build writes `PERSONAL_BUILD_DO_NOT_DISTRIBUTE.txt`: **never publish or share it** (`-Zip` is refused for it). Releases are built by GitHub Actions from a version tag; the only third-party file in them is the unmodified `POPSTARTER.ELF`, downloaded from the official r13 package and checked against its SHA-256 (`scripts/fetch_popstarter.py`). It is never stored in the repository. The icon is original artwork drawn by `scripts/make_icon.py`.
 
 ## Project layout
 

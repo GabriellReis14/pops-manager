@@ -48,6 +48,42 @@ def locate(rel: Path, custom: Path | None = None, *, folder: bool = False,
     return Located(None, 'missing')
 
 
+# POPStarter r13 Beta (2019/06/05) by krHACKen, redistributed unmodified in the public build (see
+# scripts/fetch_popstarter.py). It is the last fallback: the user's own POPSTARTER.ELF always wins.
+INCLUDED_ELF = Path(__file__).resolve().parent / 'third_party' / 'POPSTARTER.ELF'
+INCLUDED_ELF_SHA256 = '734c813e8e8ec2c6729ec5e15dd46ab696e90deeade8d0b2ca3ad03782781aa1'
+
+
+def included_elf() -> Path | None:
+    return INCLUDED_ELF if INCLUDED_ELF.is_file() else None
+
+
+def local_dir() -> Path:
+    """Where a user is told to put the files: `resources` next to the exe (project root from source)."""
+    return candidate_dirs()[-1][1]
+
+
+def child(folder: Path | None, name: str, *, folder_wanted: bool = False) -> Path | None:
+    """`folder/name`, ignoring upper/lower case (POPSTARTER.ELF vs popstarter.elf)."""
+    if folder is None or not folder.is_dir():
+        return None
+    for path in folder.iterdir():
+        if path.name.casefold() == name.casefold() and (path.is_dir() if folder_wanted else path.is_file()):
+            return path
+    return None
+
+
+def pops_folder_from(chosen: Path) -> Path | None:
+    """The POPS folder for a folder the user picked: the folder itself if it has POPSTARTER.ELF or
+    POPS_IOX.PAK, or its POPS sub-folder (the user may pick the parent, e.g. the old converter's folder)."""
+    def has_files(folder: Path | None) -> bool:
+        return bool(child(folder, 'POPSTARTER.ELF') or child(folder, 'POPS_IOX.PAK'))
+    if has_files(chosen):
+        return chosen
+    sub = child(chosen, 'POPS', folder_wanted=True)
+    return sub if has_files(sub) else None
+
+
 def support_files(folder: Path | None) -> list[tuple[Path, Path]]:
     """(source, path relative to the device root) for every file inside the POPSTARTER folder."""
     if folder is None or not folder.is_dir():

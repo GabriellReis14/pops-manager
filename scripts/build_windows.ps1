@@ -5,17 +5,22 @@
     Public build (default): no POPStarter files inside. Users put theirs in dist\POPS-Manager\resources\
     or select them in Settings.
 
+    -IncludePopstarter (used by the release workflow): downloads the official POPStarter r13 Beta package,
+    verifies its checksums and includes the unmodified POPSTARTER.ELF with credits
+    (scripts/fetch_popstarter.py). POPS_IOX.PAK (Sony) is never included.
+
     Personal build (-BundleResources): embeds YOUR POPSTARTER.ELF, POPS_IOX.PAK and POPSTARTER folder
     in the exe so nothing has to be selected. Those files are third-party/proprietary (POPS_IOX.PAK
     contains Sony's emulator): never publish or share a personal build.
 .EXAMPLE
-    .\scripts\build_windows.ps1                     # tests + public build + smoke test
+    .\scripts\build_windows.ps1                          # tests + public build + smoke test
     .\scripts\build_windows.ps1 -SkipTests
-    .\scripts\build_windows.ps1 -Zip                # also dist\POPS-Manager-<version>-win64.zip
-    .\scripts\build_windows.ps1 -BundleResources    # personal build, files from the project root
+    .\scripts\build_windows.ps1 -Zip                     # also dist\POPS-Manager-<version>-win64.zip
+    .\scripts\build_windows.ps1 -Zip -IncludePopstarter  # what the GitHub release contains
+    .\scripts\build_windows.ps1 -BundleResources         # personal build, files from the project root
     .\scripts\build_windows.ps1 -BundleResources -ResourcesDir D:\ps2\popstarter
 #>
-param([switch]$SkipTests, [switch]$Zip, [switch]$BundleResources, [string]$ResourcesDir)
+param([switch]$SkipTests, [switch]$Zip, [switch]$BundleResources, [string]$ResourcesDir, [switch]$IncludePopstarter)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Python = Join-Path $Root '.venv\Scripts\python.exe'
@@ -48,6 +53,14 @@ if ($BundleResources) {
     }
     Write-Warning 'PERSONAL BUILD: embeds third-party POPStarter/Sony files. Do not publish or share it.'
 }
+$PopsStage = $null
+if ($IncludePopstarter) {
+    # Official package, checksums verified; the ELF is the last fallback (the user's own POPSTARTER.ELF wins)
+    $PopsStage = Join-Path $Root 'build\popstarter'
+    & $Python (Join-Path $PSScriptRoot 'fetch_popstarter.py') $PopsStage
+    if ($LASTEXITCODE) { throw 'Could not get a verified POPSTARTER.ELF.' }
+    $Bundle += @('--add-data', "$(Join-Path $PopsStage 'POPSTARTER.ELF');pops_manager\third_party")
+}
 
 Push-Location $Root
 try {
@@ -70,14 +83,21 @@ try {
         if (-not (Get-ChildItem $App -Recurse -Filter $qm)) { throw "Translation $qm missing from build." }
     }
     Copy-Item README.md, LICENSE $App
+    # Bilingual "what is included / what you must provide" instructions, next to the exe
+    Copy-Item (Join-Path $Root 'docs\LEIA-ME - READ ME.txt') $App
     $LocalRes = New-Item -ItemType Directory -Force (Join-Path $App 'resources')
     @(
-        'Optional: put your own POPStarter files here (same layout as the USB root):',
-        '  resources\POPS\POPSTARTER.ELF',
-        '  resources\POPS\POPS_IOX.PAK',
-        '  resources\POPSTARTER\...   (copied as-is to <USB>\POPSTARTER\)',
-        'They can also be selected in Settings > POPStarter files.'
+        'Optional: copy your POPS folder here (resources\POPS\POPS_IOX.PAK ...), or use "Choose my POPS folder..."',
+        'in the program. See "LEIA-ME - READ ME.txt".',
+        'Opcional: copie a sua pasta POPS para ca (resources\POPS\POPS_IOX.PAK ...), ou use "Escolher minha pasta POPS..."',
+        'no programa. Veja "LEIA-ME - READ ME.txt".'
     ) | Set-Content (Join-Path $LocalRes 'README.txt') -Encoding utf8
+    $Notices = Join-Path $App 'THIRD_PARTY\POPStarter'
+    if (Test-Path (Join-Path $App 'THIRD_PARTY')) { Remove-Item (Join-Path $App 'THIRD_PARTY') -Recurse -Force }
+    if ($PopsStage) {
+        New-Item -ItemType Directory -Force $Notices | Out-Null
+        Copy-Item (Join-Path $PopsStage 'NOTICE.TXT'), (Join-Path $PopsStage 'CHANGES.TXT') $Notices
+    }
     if ($BundleResources) {
         'Personal build with embedded third-party files. Do not distribute.' |
             Set-Content (Join-Path $App 'PERSONAL_BUILD_DO_NOT_DISTRIBUTE.txt') -Encoding utf8
@@ -89,6 +109,7 @@ try {
     $env:QT_QPA_PLATFORM = 'offscreen'
     $smokeArgs = @('--smoke-test') + $(if ($BundleResources) { @('--expect-bundled') } else { @() })
     if ($BundleResources -and $Stage) { $smokeArgs += '--expect-fixes' }
+    if ($IncludePopstarter) { $smokeArgs += '--expect-popstarter' }
     $proc = Start-Process $Exe -ArgumentList $smokeArgs -PassThru -Wait
     Remove-Item Env:QT_QPA_PLATFORM
     if ($proc.ExitCode -ne 0) { throw "Smoke test failed (exit code $($proc.ExitCode))." }

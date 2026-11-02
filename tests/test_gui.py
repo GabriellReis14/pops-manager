@@ -316,3 +316,89 @@ def test_icon_files():
     sizes = {ico[6 + 16 * i] or 256 for i in range(count)}
     assert {16, 32, 48, 256} <= sizes
     assert not gui.QIcon(str(gui.ICON)).isNull()
+
+
+@pytest.fixture
+def release_window(app, settings, tmp_path, monkeypatch):
+    """Like the public release: nothing embedded, empty 'resources' folder next to the exe."""
+    exe_dir = tmp_path / 'Desktop' / 'POPS-Manager'
+    (exe_dir / 'resources').mkdir(parents=True)
+    monkeypatch.setattr(resources, 'candidate_dirs', lambda: [('bundled', exe_dir / '_internal' / 'resources'),
+                                                              ('local', exe_dir / 'resources')])
+    w = gui.Window(settings)
+    yield w, exe_dir
+    w.close()
+
+
+def _user_pops(tmp_path):
+    """The user's own folder, like the old converter's: POPS/ with the files, POPSUtils and POPSTARTER/ next to it."""
+    from test_fixes import write
+    base = tmp_path / 'MyPS2'
+    write(base / 'POPS' / 'popstarter.elf', FAKE_ELF)                 # lower case on purpose
+    write(base / 'POPS' / 'POPS_IOX.PAK', b'PAK')
+    write(base / 'POPS' / 'POPSUtils' / 'Pack' / 'POPS Game Fixes' / 'Crash Bash' / 'CHEATS.TXT')
+    write(base / 'POPSTARTER' / 'usbd.irx')
+    return base
+
+
+def test_release_without_files_shows_setup_banner(release_window):
+    w, exe_dir = release_window
+    assert not w.setup_banner.isHidden()
+    assert str(exe_dir / 'resources' / 'POPS') in w.setup_text.text()
+    dialog = gui.ResourcesDialog(w)
+    assert str(exe_dir / 'resources' / 'POPS' / 'POPSTARTER.ELF') in dialog.edits['elf'].placeholderText()
+
+
+@pytest.mark.parametrize('pick_parent', [False, True])
+def test_choose_pops_folder_finds_everything(release_window, tmp_path, monkeypatch, pick_parent):
+    w, _ = release_window
+    base = _user_pops(tmp_path)
+    chosen = base if pick_parent else base / 'POPS'
+    monkeypatch.setattr(gui.QFileDialog, 'getExistingDirectory', lambda *a, **k: str(chosen))
+    w.choose_pops_folder()
+    assert w.setup_banner.isHidden()
+    assert w.res.elf() == base / 'POPS' / 'popstarter.elf'
+    assert w.res.get('fixes').path == base / 'POPS' / 'POPSUtils' and len(w.res.fix_pack()) == 1
+    assert w.res.get('support').path == base / 'POPSTARTER'
+    assert 'POPS/POPS_IOX.PAK' in [r.as_posix() for _, r in w.res.shared()]
+    again = gui.Window(w.settings)                    # remembered after restarting
+    assert again.res.elf() == base / 'POPS' / 'popstarter.elf' and again.setup_banner.isHidden()
+    again.close()
+
+
+def test_choose_folder_without_elf_explains(release_window, tmp_path, monkeypatch):
+    w, _ = release_window
+    empty = tmp_path / 'nothing'; empty.mkdir()
+    monkeypatch.setattr(gui.QFileDialog, 'getExistingDirectory', lambda *a, **k: str(empty))
+    warnings = []
+    monkeypatch.setattr(gui.QMessageBox, 'warning', lambda *a: warnings.append(a[2]))
+    w.choose_pops_folder()
+    assert warnings == [PT['pops_no_elf'].format(path=str(empty))] and not w.setup_banner.isHidden()
+
+
+def test_files_copied_into_resources_are_found(release_window, tmp_path):
+    w, exe_dir = release_window
+    import shutil
+    shutil.copytree(_user_pops(tmp_path) / 'POPS', exe_dir / 'resources' / 'POPS')
+    w.refresh_resources()
+    assert w.setup_banner.isHidden() and w.res.get('elf').origin == 'local'
+
+
+def test_included_elf_is_last_fallback_and_pak_still_asked(release_window, tmp_path, monkeypatch):
+    w, _ = release_window
+    included = tmp_path / 'third_party' / 'POPSTARTER.ELF'
+    included.parent.mkdir(); included.write_bytes(FAKE_ELF)
+    monkeypatch.setattr(gui, 'included_elf', lambda: included)
+    w.refresh_resources()
+    assert w.res.get('elf') == resources.Located(included, 'included')
+    assert PT['origin_included'] in w.resources_status.text()
+    assert not w.setup_banner.isHidden() and w.setup_text.text().startswith(PT['pak_needed'][:20])
+    # a folder with only the PAK is enough; the user's own ELF would still win over the included one
+    from test_fixes import write
+    pak_only = tmp_path / 'OnlyPak'
+    write(pak_only / 'POPS_IOX.PAK', b'PAK')
+    monkeypatch.setattr(gui.QFileDialog, 'getExistingDirectory', lambda *a, **k: str(pak_only))
+    w.choose_pops_folder()
+    assert w.setup_banner.isHidden() and w.res.elf() == included
+    write(pak_only / 'POPSTARTER.ELF', FAKE_ELF)
+    assert w.res.elf() == pak_only / 'POPSTARTER.ELF'

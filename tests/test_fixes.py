@@ -151,3 +151,18 @@ def test_stage_for_build_keeps_matches_and_patch_warnings(tmp_path, pack_root):
     jade = pack.match('Jade Cocoon - Story of the Tamamayu (USA)')
     assert names(jade) == ['CHEATS.TXT'] and [p.name for p in jade.image_patches] == ['IMAGE_PATCHES.TXT']
     assert names(pack.match('Crash Team Racing (USA)')) == ['TROJAN_0.BIN']
+
+
+def test_fetch_popstarter_refuses_unverified_package(tmp_path):
+    import importlib.util
+    import zipfile
+    spec = importlib.util.spec_from_file_location('fetch_popstarter', Path(__file__).resolve().parents[1] / 'scripts' / 'fetch_popstarter.py')
+    fetch = importlib.util.module_from_spec(spec); spec.loader.exec_module(fetch)
+    fake = tmp_path / 'fake.zip'
+    with zipfile.ZipFile(fake, 'w') as z:
+        z.writestr(fetch.ELF_MEMBER, b'not popstarter'); z.writestr(fetch.CHANGES_MEMBER, b'')
+    with pytest.raises(SystemExit, match='checksum'):
+        fetch.fetch(tmp_path / 'out', fake)
+    assert not (tmp_path / 'out').exists()
+    from pops_manager.resources import INCLUDED_ELF_SHA256
+    assert fetch.ELF_SHA256 == INCLUDED_ELF_SHA256

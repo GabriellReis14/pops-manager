@@ -1,0 +1,72 @@
+POPS Manager
+============
+
+(English below)
+
+PORTUGUÊS
+---------
+
+O que já vem incluído
+  - O programa (POPS-Manager.exe).
+  - POPSTARTER.ELF (POPStarter r13 Beta 2019/06/05, de krHACKen), sem modificações.
+    Créditos e origem: pasta THIRD_PARTY\POPStarter.
+
+O que você PRECISA providenciar (não pode ser distribuído junto)
+  - POPS_IOX.PAK: é o emulador de PS1 da Sony. Sem ele, nenhum jogo abre.
+    Ele costuma estar na pasta POPS que você já usava com o PS1_USB_Converter.
+  - Os seus jogos de PS1 (.cue/.bin, .zip, .7z ou .VCD).
+
+Opcionais (recomendados)
+  - CHEATS.TXT e IGR_BG.TM2 / IGR_YES.TM2 / IGR_NO.TM2 (ficam na mesma pasta POPS).
+  - Pacote de correções "Hugopocked POPStarter Fixes" (pasta POPSUtils dentro da pasta POPS):
+    corrige travamentos e falhas gráficas/de som de muitos jogos, aplicado automaticamente.
+  - Para HD/pendrive em exFAT: drivers BDMAssault instalados no MEMORY CARD do PS2
+    (mc0:/POPSTARTER/usbd.irx e usbhdfsd.irx). Em FAT32 não é necessário.
+
+Como configurar (uma vez só)
+  1. Abra o POPS-Manager.exe.
+  2. Na faixa amarela, clique em "Escolher minha pasta POPS..." e selecione a pasta que tem o
+     POPS_IOX.PAK (pode ser a pasta POPS antiga ou a pasta acima dela).
+     O programa encontra sozinho o PAK, os outros arquivos e a POPSUtils, e lembra da escolha.
+     Outra opção: copie a sua pasta POPS para resources\POPS (ao lado do .exe).
+  3. Adicione os jogos, escolha o pendrive/HD e clique em "Preparar PS2".
+
+Dicas
+  - Use pendrive ou HD/SSD SATA em FAT32. Evite SSD NVMe em gabinete USB (ex.: Realtek RTL9210):
+    o jogo pisca e volta para o OPL.
+  - Se um jogo não abrir: Ferramentas > Verificar dispositivo.
+  - Mantenha o programa num caminho curto, por exemplo C:\POPS-Manager.
+
+ENGLISH
+-------
+
+Included
+  - The program (POPS-Manager.exe).
+  - POPSTARTER.ELF (POPStarter r13 Beta 2019/06/05 by krHACKen), unmodified.
+    Credits and source: THIRD_PARTY\POPStarter folder.
+
+What you MUST provide (cannot be distributed with it)
+  - POPS_IOX.PAK: Sony's PS1 emulator. No game starts without it.
+    It is usually in the POPS folder you used with PS1_USB_Converter.
+  - Your PS1 games (.cue/.bin, .zip, .7z or .VCD).
+
+Optional (recommended)
+  - CHEATS.TXT and IGR_BG.TM2 / IGR_YES.TM2 / IGR_NO.TM2 (same POPS folder).
+  - "Hugopocked POPStarter Fixes" pack (POPSUtils folder inside the POPS folder): fixes crashes and
+    graphics/sound glitches of many games, applied automatically.
+  - For exFAT drives: BDMAssault drivers installed on the PS2 MEMORY CARD
+    (mc0:/POPSTARTER/usbd.irx and usbhdfsd.irx). Not needed on FAT32.
+
+Setup (once)
+  1. Run POPS-Manager.exe.
+  2. In the yellow bar, click "Choose my POPS folder..." and pick the folder that contains
+     POPS_IOX.PAK (the old POPS folder or the folder above it). The PAK, the other files and POPSUtils
+     are found automatically and the choice is remembered.
+     Alternatively, copy your POPS folder to resources\POPS (next to the .exe).
+  3. Add games, choose the flash drive/HDD and click "Prepare PS2".
+
+Tips
+  - Use a FAT32 flash drive or SATA HDD/SSD. Avoid NVMe SSDs in USB enclosures (e.g. Realtek RTL9210):
+    the game flashes and returns to OPL.
+  - If a game does not start: Tools > Check device.
+  - Keep the program in a short path, e.g. C:\POPS-Manager.
